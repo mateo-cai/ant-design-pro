@@ -4,10 +4,10 @@
 
 ## 技术栈
 
-- Java 17
-- Spring Boot 3.3
+- **JDK 1.8**
+- Spring Boot 2.7
 - Maven
-- `RestClient`（Beszel PocketBase API + 企业微信）
+- `RestTemplate`（Beszel PocketBase API + 企业微信）
 
 ## 快速开始
 
@@ -19,9 +19,10 @@ cp config/monitor-config.example.json config/monitor-config.json
 
 编辑 `config/monitor-config.json`：填入各项目的 Beszel `baseUrl` / 账号密码，以及企业微信 Webhook `key`。**不要把真实密钥提交到 Git。**
 
-### 2. 构建
+### 2. 构建（需本机 JDK 8）
 
 ```bash
+java -version   # 确认 1.8
 mvn -q package
 ```
 

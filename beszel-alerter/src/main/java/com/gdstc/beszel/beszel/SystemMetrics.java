@@ -1,5 +1,7 @@
 package com.gdstc.beszel.beszel;
 
+import com.gdstc.beszel.util.Strings;
+
 /**
  * Snapshot of a Beszel system record used for alerting.
  */
@@ -60,7 +62,7 @@ public class SystemMetrics {
      * Prefer Beszel host field; fall back to name for display / matching identity.
      */
     public String resolveIpOrHost() {
-        if (host != null && !host.isBlank()) {
+        if (host != null && Strings.isNotBlank(host)) {
             return host.trim();
         }
         return name != null ? name.trim() : "";

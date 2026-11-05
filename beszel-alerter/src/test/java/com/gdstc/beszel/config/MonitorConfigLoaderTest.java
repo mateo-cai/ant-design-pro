@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -73,12 +74,12 @@ class MonitorConfigLoaderTest {
         MonitorProperties.ProjectConfig p = new MonitorProperties.ProjectConfig();
         p.setHosts(null);
         assertTrue(p.monitorsAllHosts());
-        p.setHosts(java.util.List.of());
+        p.setHosts(Collections.<MonitorProperties.HostConfig>emptyList());
         assertTrue(p.monitorsAllHosts());
 
         MonitorProperties.HostConfig h = new MonitorProperties.HostConfig();
         h.setIp("1.1.1.1");
-        p.setHosts(java.util.List.of(h));
+        p.setHosts(Collections.singletonList(h));
         assertFalse(p.monitorsAllHosts());
     }
 
@@ -97,13 +98,23 @@ class MonitorConfigLoaderTest {
         beszel.setEmail("a");
         beszel.setPassword("b");
         project.setBeszel(beszel);
-        props.setProjects(java.util.List.of(project));
+        props.setProjects(Collections.singletonList(project));
 
-        assertThrows(IllegalArgumentException.class, () -> loader.validate(props));
+        assertThrows(IllegalArgumentException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                loader.validate(props);
+            }
+        });
 
         project.setName("ok");
         beszel.setBaseUrl("");
-        assertThrows(IllegalArgumentException.class, () -> loader.validate(props));
+        assertThrows(IllegalArgumentException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                loader.validate(props);
+            }
+        });
     }
 
     @Test

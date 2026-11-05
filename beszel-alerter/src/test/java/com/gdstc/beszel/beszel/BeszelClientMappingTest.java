@@ -14,23 +14,22 @@ class BeszelClientMappingTest {
 
     @Test
     void mapsInfoMetricsAndStatus() throws Exception {
-        JsonNode item = mapper.readTree("""
-                {
-                  "id": "abc",
-                  "name": "app-1",
-                  "host": "10.0.0.1",
-                  "status": "up",
-                  "info": { "cpu": 12.5, "mp": 40.1, "dp": 70.0 }
-                }
-                """);
+        JsonNode item = mapper.readTree(
+                "{"
+                        + "\"id\":\"abc\","
+                        + "\"name\":\"app-1\","
+                        + "\"host\":\"10.0.0.1\","
+                        + "\"status\":\"up\","
+                        + "\"info\":{\"cpu\":12.5,\"mp\":40.1,\"dp\":70.0}"
+                        + "}");
         SystemMetrics m = BeszelClient.mapSystem(item);
         assertEquals("abc", m.getId());
         assertEquals("app-1", m.getName());
         assertEquals("10.0.0.1", m.getHost());
         assertTrue(m.isUp());
-        assertEquals(12.5, m.getCpu());
-        assertEquals(40.1, m.getMemoryPercent());
-        assertEquals(70.0, m.getDiskPercent());
+        assertEquals(12.5, m.getCpu(), 0.0001);
+        assertEquals(40.1, m.getMemoryPercent(), 0.0001);
+        assertEquals(70.0, m.getDiskPercent(), 0.0001);
     }
 
     @Test
@@ -41,9 +40,8 @@ class BeszelClientMappingTest {
 
     @Test
     void downStatusIsNotUp() throws Exception {
-        JsonNode item = mapper.readTree("""
-                {"id":"1","name":"x","host":"1.1.1.1","status":"down","info":{}}
-                """);
+        JsonNode item = mapper.readTree(
+                "{\"id\":\"1\",\"name\":\"x\",\"host\":\"1.1.1.1\",\"status\":\"down\",\"info\":{}}");
         assertFalse(BeszelClient.mapSystem(item).isUp());
     }
 }

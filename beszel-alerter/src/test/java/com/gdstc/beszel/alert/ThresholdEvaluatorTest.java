@@ -5,11 +5,12 @@ import com.gdstc.beszel.config.MonitorProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ThresholdEvaluatorTest {
@@ -43,9 +44,9 @@ class ThresholdEvaluatorTest {
     void gtTriggersWhenAboveThreshold() {
         SystemMetrics system = new SystemMetrics("1", "app", "10.0.0.1", "up", 91.2, 50.0, 40.0);
         MonitorProperties.HostConfig host = host("应用节点1", "10.0.0.1");
-        project.setHosts(List.of(host));
+        project.setHosts(Collections.singletonList(host));
 
-        List<AlertEvent> alerts = evaluator.evaluate(props, project, List.of(system));
+        List<AlertEvent> alerts = evaluator.evaluate(props, project, Collections.singletonList(system));
 
         assertEquals(1, alerts.size());
         AlertEvent a = alerts.get(0);
@@ -58,9 +59,9 @@ class ThresholdEvaluatorTest {
     @Test
     void ltTriggersWhenBelowThreshold() {
         SystemMetrics system = new SystemMetrics("1", "db", "10.0.0.2", "up", 10.0, 20.0, 3.0);
-        project.setHosts(List.of(host("db", "10.0.0.2")));
+        project.setHosts(Collections.singletonList(host("db", "10.0.0.2")));
 
-        List<AlertEvent> alerts = evaluator.evaluate(props, project, List.of(system));
+        List<AlertEvent> alerts = evaluator.evaluate(props, project, Collections.singletonList(system));
 
         assertEquals(1, alerts.size());
         assertEquals(AlertEvent.Metric.DISK, alerts.get(0).getMetric());
@@ -70,9 +71,9 @@ class ThresholdEvaluatorTest {
     @Test
     void nullBoundDirectionDoesNotTrigger() {
         SystemMetrics system = new SystemMetrics("1", "app", "10.0.0.1", "up", 1.0, 1.0, 50.0);
-        project.setHosts(List.of(host(null, "10.0.0.1")));
+        project.setHosts(Collections.singletonList(host(null, "10.0.0.1")));
 
-        List<AlertEvent> alerts = evaluator.evaluate(props, project, List.of(system));
+        List<AlertEvent> alerts = evaluator.evaluate(props, project, Collections.singletonList(system));
 
         assertTrue(alerts.isEmpty());
     }
@@ -80,9 +81,9 @@ class ThresholdEvaluatorTest {
     @Test
     void offlineWhenStatusNotUp() {
         SystemMetrics system = new SystemMetrics("1", "app", "10.0.0.1", "down", 10.0, 10.0, 10.0);
-        project.setHosts(List.of(host("应用节点1", "10.0.0.1")));
+        project.setHosts(Collections.singletonList(host("应用节点1", "10.0.0.1")));
 
-        List<AlertEvent> alerts = evaluator.evaluate(props, project, List.of(system));
+        List<AlertEvent> alerts = evaluator.evaluate(props, project, Collections.singletonList(system));
 
         assertEquals(1, alerts.size());
         assertEquals(AlertEvent.Metric.OFFLINE, alerts.get(0).getMetric());
@@ -91,11 +92,11 @@ class ThresholdEvaluatorTest {
 
     @Test
     void emptyHostsMonitorsAllSystems() {
-        project.setHosts(List.of());
+        project.setHosts(Collections.<MonitorProperties.HostConfig>emptyList());
         SystemMetrics a = new SystemMetrics("1", "a", "10.0.0.1", "up", 90.0, 10.0, 10.0);
         SystemMetrics b = new SystemMetrics("2", "b", "10.0.0.2", "up", 90.0, 10.0, 10.0);
 
-        List<AlertEvent> alerts = evaluator.evaluate(props, project, List.of(a, b));
+        List<AlertEvent> alerts = evaluator.evaluate(props, project, Arrays.asList(a, b));
 
         assertEquals(2, alerts.size());
         assertTrue(alerts.stream().allMatch(e -> e.getMetric() == AlertEvent.Metric.CPU));
@@ -106,7 +107,7 @@ class ThresholdEvaluatorTest {
         project.setHosts(null);
         SystemMetrics a = new SystemMetrics("1", "a", "10.0.0.1", "up", 90.0, 10.0, 10.0);
 
-        List<AlertEvent> alerts = evaluator.evaluate(props, project, List.of(a));
+        List<AlertEvent> alerts = evaluator.evaluate(props, project, Collections.singletonList(a));
 
         assertEquals(1, alerts.size());
     }
@@ -117,13 +118,13 @@ class ThresholdEvaluatorTest {
         MonitorProperties.MetricThresholds hostTh = new MonitorProperties.MetricThresholds();
         hostTh.setCpu(new MonitorProperties.Bound(95.0, null));
         host.setThresholds(hostTh);
-        project.setHosts(List.of(host));
+        project.setHosts(Collections.singletonList(host));
 
         SystemMetrics system = new SystemMetrics("1", "app", "10.0.0.1", "up", 90.0, 10.0, 10.0);
-        assertTrue(evaluator.evaluate(props, project, List.of(system)).isEmpty());
+        assertTrue(evaluator.evaluate(props, project, Collections.singletonList(system)).isEmpty());
 
         SystemMetrics hotter = new SystemMetrics("1", "app", "10.0.0.1", "up", 96.0, 10.0, 10.0);
-        assertEquals(1, evaluator.evaluate(props, project, List.of(hotter)).size());
+        assertEquals(1, evaluator.evaluate(props, project, Collections.singletonList(hotter)).size());
     }
 
     @Test
@@ -131,24 +132,24 @@ class ThresholdEvaluatorTest {
         SystemMetrics byHost = new SystemMetrics("1", "wrong", "10.0.0.1", "up", 1.0, 1.0, 1.0);
         SystemMetrics byName = new SystemMetrics("2", "10.0.0.2", "other", "up", 1.0, 1.0, 1.0);
 
-        assertEquals("1", ThresholdEvaluator.findMatchingSystem(List.of(byHost, byName), "10.0.0.1").orElseThrow().getId());
-        assertEquals("2", ThresholdEvaluator.findMatchingSystem(List.of(byName), "10.0.0.2").orElseThrow().getId());
-        assertEquals(Optional.empty(), ThresholdEvaluator.findMatchingSystem(List.of(byHost), "9.9.9.9"));
+        assertEquals("1", ThresholdEvaluator.findMatchingSystem(Arrays.asList(byHost, byName), "10.0.0.1").get().getId());
+        assertEquals("2", ThresholdEvaluator.findMatchingSystem(Collections.singletonList(byName), "10.0.0.2").get().getId());
+        assertEquals(Optional.empty(), ThresholdEvaluator.findMatchingSystem(Collections.singletonList(byHost), "9.9.9.9"));
     }
 
     @Test
     void matchIsCaseInsensitive() {
         SystemMetrics s = new SystemMetrics("1", "Node-A", "10.0.0.1", "up", 1.0, 1.0, 1.0);
-        assertTrue(ThresholdEvaluator.findMatchingSystem(List.of(s), "10.0.0.1").isPresent());
-        assertTrue(ThresholdEvaluator.findMatchingSystem(List.of(s), "node-a").isPresent());
+        assertTrue(ThresholdEvaluator.findMatchingSystem(Collections.singletonList(s), "10.0.0.1").isPresent());
+        assertTrue(ThresholdEvaluator.findMatchingSystem(Collections.singletonList(s), "node-a").isPresent());
     }
 
     @Test
     void configuredHostMissingProducesOffline() {
-        project.setHosts(List.of(host("ghost", "10.9.9.9")));
+        project.setHosts(Collections.singletonList(host("ghost", "10.9.9.9")));
         SystemMetrics other = new SystemMetrics("1", "a", "10.0.0.1", "up", 1.0, 1.0, 1.0);
 
-        List<AlertEvent> alerts = evaluator.evaluate(props, project, List.of(other));
+        List<AlertEvent> alerts = evaluator.evaluate(props, project, Collections.singletonList(other));
 
         assertEquals(1, alerts.size());
         assertEquals(AlertEvent.Metric.OFFLINE, alerts.get(0).getMetric());

@@ -1,5 +1,7 @@
 package com.gdstc.beszel.alert;
 
+import com.gdstc.beszel.util.Strings;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -115,7 +117,7 @@ public class AlertEvent {
     }
 
     public String formatMessage() {
-        String hostLine = (hostDisplayName != null && !hostDisplayName.isBlank())
+        String hostLine = (Strings.isNotBlank(hostDisplayName))
                 ? hostDisplayName + " (" + ip + ")"
                 : ip;
         String metricLine;

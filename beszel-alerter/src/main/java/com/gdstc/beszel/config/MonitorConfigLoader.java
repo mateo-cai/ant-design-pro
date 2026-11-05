@@ -1,5 +1,7 @@
 package com.gdstc.beszel.config;
 
+import com.gdstc.beszel.util.Strings;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -34,7 +37,7 @@ public class MonitorConfigLoader {
     }
 
     public MonitorProperties load() throws IOException {
-        return load(Path.of(configPath));
+        return load(Paths.get(configPath));
     }
 
     public MonitorProperties load(Path path) throws IOException {
@@ -57,7 +60,7 @@ public class MonitorConfigLoader {
         Set<String> names = new HashSet<>();
         for (int i = 0; i < props.getProjects().size(); i++) {
             MonitorProperties.ProjectConfig project = props.getProjects().get(i);
-            if (project.getName() == null || project.getName().isBlank()) {
+            if (Strings.isBlank(project.getName())) {
                 throw new IllegalArgumentException("projects[" + i + "].name is required");
             }
             if (!names.add(project.getName())) {
@@ -66,19 +69,19 @@ public class MonitorConfigLoader {
             if (project.getBeszel() == null) {
                 throw new IllegalArgumentException("projects[" + i + "].beszel is required");
             }
-            if (project.getBeszel().getBaseUrl() == null || project.getBeszel().getBaseUrl().isBlank()) {
+            if (Strings.isBlank(project.getBeszel().getBaseUrl())) {
                 throw new IllegalArgumentException("projects[" + i + "].beszel.baseUrl is required");
             }
-            if (project.getBeszel().getEmail() == null || project.getBeszel().getEmail().isBlank()) {
+            if (Strings.isBlank(project.getBeszel().getEmail())) {
                 throw new IllegalArgumentException("projects[" + i + "].beszel.email is required");
             }
-            if (project.getBeszel().getPassword() == null || project.getBeszel().getPassword().isBlank()) {
+            if (Strings.isBlank(project.getBeszel().getPassword())) {
                 throw new IllegalArgumentException("projects[" + i + "].beszel.password is required");
             }
             if (project.getHosts() != null) {
                 for (int j = 0; j < project.getHosts().size(); j++) {
                     MonitorProperties.HostConfig host = project.getHosts().get(j);
-                    if (host.getIp() == null || host.getIp().isBlank()) {
+                    if (Strings.isBlank(host.getIp())) {
                         throw new IllegalArgumentException(
                                 "projects[" + i + "].hosts[" + j + "].ip is required when hosts are listed");
                     }
@@ -93,7 +96,7 @@ public class MonitorConfigLoader {
     }
 
     public static String resolveChannel(MonitorProperties props, MonitorProperties.ProjectConfig project) {
-        if (project.getChannel() != null && !project.getChannel().isBlank()) {
+        if (Strings.isNotBlank(project.getChannel())) {
             return project.getChannel();
         }
         return props.getDefaults().getChannel();

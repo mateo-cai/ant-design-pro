@@ -2,12 +2,16 @@ package com.gdstc.beszel.notify;
 
 import com.gdstc.beszel.alert.AlertEvent;
 import com.gdstc.beszel.config.MonitorProperties;
+import com.gdstc.beszel.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -21,10 +25,10 @@ public class WeComWebhookNotifier implements NotifyChannel {
 
     private static final Logger log = LoggerFactory.getLogger(WeComWebhookNotifier.class);
 
-    private final RestClient.Builder restClientBuilder;
+    private final RestTemplate restTemplate;
 
-    public WeComWebhookNotifier(RestClient.Builder restClientBuilder) {
-        this.restClientBuilder = restClientBuilder;
+    public WeComWebhookNotifier(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
     @Override
@@ -34,13 +38,15 @@ public class WeComWebhookNotifier implements NotifyChannel {
 
     @Override
     public void send(MonitorProperties.ChannelConfig channelConfig, AlertEvent event) {
-        if (channelConfig == null || channelConfig.getWebhookUrl() == null || channelConfig.getWebhookUrl().isBlank()) {
+        if (channelConfig == null || Strings.isBlank(channelConfig.getWebhookUrl())) {
             throw new IllegalArgumentException("WeCom webhookUrl is required");
         }
         String message = event.formatMessage();
-        Map<String, Object> body = Map.of(
-                "msgtype", "text",
-                "text", Map.of("content", message));
+        Map<String, Object> text = new HashMap<String, Object>();
+        text.put("content", message);
+        Map<String, Object> body = new HashMap<String, Object>();
+        body.put("msgtype", "text");
+        body.put("text", text);
 
         try {
             doPost(channelConfig.getWebhookUrl(), body);
@@ -56,12 +62,8 @@ public class WeComWebhookNotifier implements NotifyChannel {
     }
 
     private void doPost(String webhookUrl, Map<String, Object> body) {
-        restClientBuilder.build()
-                .post()
-                .uri(webhookUrl)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .toBodilessEntity();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        restTemplate.postForEntity(webhookUrl, new HttpEntity<Map<String, Object>>(body, headers), String.class);
     }
 }

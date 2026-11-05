@@ -3,6 +3,7 @@ package com.gdstc.beszel.alert;
 import com.gdstc.beszel.beszel.SystemMetrics;
 import com.gdstc.beszel.config.MonitorConfigLoader;
 import com.gdstc.beszel.config.MonitorProperties;
+import com.gdstc.beszel.util.Strings;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -91,7 +92,7 @@ public class ThresholdEvaluator {
      * Match configured IP against system host first, then name (case-insensitive trim).
      */
     public static Optional<SystemMetrics> findMatchingSystem(List<SystemMetrics> systems, String configuredIp) {
-        if (configuredIp == null || configuredIp.isBlank() || systems == null) {
+        if (configuredIp == null || Strings.isBlank(configuredIp) || systems == null) {
             return Optional.empty();
         }
         String needle = configuredIp.trim();
@@ -109,10 +110,10 @@ public class ThresholdEvaluator {
     }
 
     private static String resolveDisplayName(MonitorProperties.HostConfig hostConfig, SystemMetrics system) {
-        if (hostConfig != null && hostConfig.getName() != null && !hostConfig.getName().isBlank()) {
+        if (hostConfig != null && Strings.isNotBlank(hostConfig.getName())) {
             return hostConfig.getName();
         }
-        if (system.getName() != null && !system.getName().isBlank()) {
+        if (Strings.isNotBlank(system.getName())) {
             return system.getName();
         }
         return system.resolveIpOrHost();
