@@ -1,0 +1,156 @@
+package com.gdstc.beszel.beszel;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.gdstc.beszel.config.MonitorProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * PocketBase-backed Beszel Hub client with per-baseUrl token cache.
+ */
+@Component
+public class BeszelClient {
+
+    private static final Logger log = LoggerFactory.getLogger(BeszelClient.class);
+
+    /** Refresh token slightly before PocketBase default ~14 day expiry; also re-auth on 401. */
+    private static final long TOKEN_TTL_SECONDS = 12 * 60 * 60;
+
+    private final RestClient.Builder restClientBuilder;
+    private final ConcurrentHashMap<String, CachedToken> tokenCache = new ConcurrentHashMap<>();
+
+    public BeszelClient(RestClient.Builder restClientBuilder) {
+        this.restClientBuilder = restClientBuilder;
+    }
+
+    public List<SystemMetrics> listSystems(MonitorProperties.BeszelConfig beszel) {
+        String baseUrl = normalizeBaseUrl(beszel.getBaseUrl());
+        String token = getToken(baseUrl, beszel);
+        try {
+            return fetchSystems(baseUrl, token);
+        } catch (RestClientResponseException ex) {
+            if (ex.getStatusCode().value() == 401) {
+                log.warn("Beszel token expired for {}, re-authenticating", baseUrl);
+                tokenCache.remove(baseUrl);
+                token = authenticate(baseUrl, beszel);
+                return fetchSystems(baseUrl, token);
+            }
+            throw ex;
+        }
+    }
+
+    private List<SystemMetrics> fetchSystems(String baseUrl, String token) {
+        RestClient client = restClientBuilder.baseUrl(baseUrl).build();
+        JsonNode body = client.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/collections/systems/records")
+                        .queryParam("perPage", 200)
+                        .queryParam("fields", "id,name,host,status,info")
+                        .build())
+                .header("Authorization", token)
+                .retrieve()
+                .body(JsonNode.class);
+
+        List<SystemMetrics> result = new ArrayList<>();
+        if (body == null || !body.has("items")) {
+            return result;
+        }
+        for (JsonNode item : body.get("items")) {
+            result.add(mapSystem(item));
+        }
+        return result;
+    }
+
+    static SystemMetrics mapSystem(JsonNode item) {
+        String id = text(item, "id");
+        String name = text(item, "name");
+        String host = text(item, "host");
+        String status = text(item, "status");
+        JsonNode info = item.get("info");
+        Double cpu = null;
+        Double mp = null;
+        Double dp = null;
+        if (info != null && !info.isNull()) {
+            cpu = asDouble(info.get("cpu"));
+            mp = asDouble(info.get("mp"));
+            dp = asDouble(info.get("dp"));
+        }
+        return new SystemMetrics(id, name, host, status, cpu, mp, dp);
+    }
+
+    private String getToken(String baseUrl, MonitorProperties.BeszelConfig beszel) {
+        CachedToken cached = tokenCache.get(baseUrl);
+        if (cached != null && Instant.now().isBefore(cached.expiresAt())) {
+            return cached.token();
+        }
+        return authenticate(baseUrl, beszel);
+    }
+
+    private String authenticate(String baseUrl, MonitorProperties.BeszelConfig beszel) {
+        RestClient client = restClientBuilder.baseUrl(baseUrl).build();
+        JsonNode body = client.post()
+                .uri("/api/collections/users/auth-with-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of(
+                        "identity", beszel.getEmail(),
+                        "password", beszel.getPassword()))
+                .retrieve()
+                .body(JsonNode.class);
+
+        if (body == null || !body.hasNonNull("token")) {
+            throw new IllegalStateException("Beszel auth response missing token for " + baseUrl);
+        }
+        String token = body.get("token").asText();
+        tokenCache.put(baseUrl, new CachedToken(token, Instant.now().plusSeconds(TOKEN_TTL_SECONDS)));
+        log.info("Authenticated to Beszel Hub {}", baseUrl);
+        return token;
+    }
+
+    static String normalizeBaseUrl(String baseUrl) {
+        if (baseUrl == null) {
+            return "";
+        }
+        String trimmed = baseUrl.trim();
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
+    }
+
+    private static String text(JsonNode node, String field) {
+        JsonNode v = node.get(field);
+        return v == null || v.isNull() ? null : v.asText();
+    }
+
+    private static Double asDouble(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isNumber()) {
+            return node.asDouble();
+        }
+        try {
+            return Double.parseDouble(node.asText());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Visible for tests: clear cached tokens. */
+    void clearTokenCache() {
+        tokenCache.clear();
+    }
+
+    private record CachedToken(String token, Instant expiresAt) {
+    }
+}

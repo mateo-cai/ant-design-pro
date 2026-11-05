@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: beszel-alerter
+  main:
+    web-application-type: none
+
+# Path to monitor JSON config. Override with --monitor.config=/path/to/monitor-config.json
+monitor:
+  config: ./config/monitor-config.json
+
+logging:
+  level:
+    com.gdstc.beszel: INFO

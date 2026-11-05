@@ -1,0 +1,58 @@
+{
+  "channels": {
+    "wecom": {
+      "type": "wecom_webhook",
+      "webhookUrl": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY"
+    }
+  },
+  "defaults": {
+    "intervalSeconds": 60,
+    "channel": "wecom",
+    "cooldownSeconds": 300,
+    "thresholds": {
+      "cpu": { "gt": 80, "lt": null },
+      "memory": { "gt": 85, "lt": null },
+      "disk": { "gt": 90, "lt": 5 }
+    }
+  },
+  "projects": [
+    {
+      "name": "科研管理平台",
+      "beszel": {
+        "baseUrl": "https://xm.gdstc.gd.gov.cn/beszel",
+        "email": "YOUR_EMAIL",
+        "password": "YOUR_PASSWORD"
+      },
+      "intervalSeconds": 60,
+      "channel": "wecom",
+      "hosts": [
+        {
+          "name": "应用节点1",
+          "ip": "10.0.0.1",
+          "thresholds": {
+            "cpu": { "gt": 80, "lt": null },
+            "memory": { "gt": 85, "lt": null },
+            "disk": { "gt": 90, "lt": 5 }
+          }
+        },
+        {
+          "name": "数据库节点",
+          "ip": "10.0.0.2"
+        }
+      ]
+    },
+    {
+      "name": "另一业务平台",
+      "beszel": {
+        "baseUrl": "https://example.com/beszel",
+        "email": "YOUR_EMAIL",
+        "password": "YOUR_PASSWORD"
+      },
+      "hosts": [
+        {
+          "ip": "10.1.0.1"
+        }
+      ]
+    }
+  ]
+}
